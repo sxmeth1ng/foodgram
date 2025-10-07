@@ -322,5 +322,3 @@ class RecipeCreateUpdateSerializer(RecipeSerializer):
 
     def to_representation(self, instance):
         return RecipeViewSerializer(instance, context=self.context).data
-
-
