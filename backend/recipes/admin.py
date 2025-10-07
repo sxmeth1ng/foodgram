@@ -46,6 +46,7 @@ class RecipeAdmin(admin.ModelAdmin):
         'tags_list',
         'ingredients_list',
         'pub_date',
+        'added_to_favorite'
     )
     search_fields = (
         'name',
@@ -65,10 +66,3 @@ class RecipeAdmin(admin.ModelAdmin):
         )
 
     ingredients_list.short_description = 'Ингредиенты'
-
-    def get_queryset(self, request):
-        queryset = Recipe.objects.select_related('author').prefetch_related(
-            'ingredients',
-            'tags'
-        )
-        return queryset

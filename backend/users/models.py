@@ -1,6 +1,8 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.db.models import UniqueConstraint
+
+from users.utils import generate_avatar_path
+from users.validators import validate_username
 
 
 class CustomUser(AbstractUser):
@@ -10,6 +12,7 @@ class CustomUser(AbstractUser):
         'Имя пользователя',
         unique=True,
         max_length=150,
+        validators=[validate_username],
     )
     email = models.EmailField(
         'e-mail',
@@ -24,9 +27,27 @@ class CustomUser(AbstractUser):
         'Фамилия',
         max_length=150,
     )
+    subscriptions = models.ManyToManyField(
+        'self',
+        verbose_name='Подписки',
+        related_name='subscribers',
+        symmetrical=False,
+        blank=True
+    )
     avatar = models.ImageField(
         'Аватар',
         upload_to=generate_avatar_path,
+        null=True,
+        blank=True,
+    )
+    favorite_recipes = models.ManyToManyField(
+        'recipes.Recipe',
+        related_name='favorite_recipes',
+        blank=True,
+    )
+    shopping_cart = models.ManyToManyField(
+        'recipes.Recipe',
+        related_name='shopping_cart_recipes',
         blank=True,
     )
     USERNAME_FIELD = 'email'
@@ -42,65 +63,4 @@ class CustomUser(AbstractUser):
         ordering = ('username',)
 
     def __str__(self):
-        return self.username
-
-
-class Subscription(models.Model):
-    """Модель подписки."""
-
-    user = models.ForeignKey(
-        CustomUser,
-        on_delete=models.CASCADE,
-        related_name='following',
-        verbose_name='Подписчик',
-    )
-    author = models.ForeignKey(
-        CustomUser,
-        on_delete=models.CASCADE,
-        related_name='followed_by',
-        verbose_name='Автор',
-    )
-
-    class Meta:
-        verbose_name = 'Подписка'
-        verbose_name_plural = 'Подписки'
-        constraints = (UniqueConstraint(
-            fields=('user', 'author'),
-            name='unique_subscription',
-        ),
-        )
-        ordering = ('user',)
-
-    def __str__(self):
-        return f'{self.user} формил подписку на {self.author}'
-
-
-class ShoppingCart(models.Model):
-    user = models.ForeignKey(
-        CustomUser,
-        on_delete=models.CASCADE,
-        related_name='shopping_cart',
-        verbose_name='Пользователь',
-    )
-    recipe = models.ForeignKey(
-        'recipes.Recipe',
-        on_delete=models.CASCADE,
-        related_name='in_shopping_cart',
-        verbose_name='Рецепт',
-    )
-
-    class Meta:
-        verbose_name = 'Список покупок'
-        verbose_name_plural = 'Списки покупок'
-
-        constraints = (
-            models.UniqueConstraint(
-                fields=('user', 'recipe'),
-                name='unique_shopping_cart_recipe',
-            ),
-        )
-
-    def __str__(self):
-        return (
-            f'{self.recipe} в списке покупок у {self.user}'
-        )
+        return self.username[:30]
