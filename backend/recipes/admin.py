@@ -14,11 +14,12 @@ class IngredientAdmin(admin.ModelAdmin):
     search_fields = ('name',)
 
 
-class RecipeIngredientAdmin(admin.StackedInline):
+class RecipeIngredientInLine(admin.StackedInline):
     """Регистрация модели промежуточной таблицы в админке."""
 
     model = RecipeIngredient
     autocomplete_fields = ('ingredient',)
+    min_num = 1
 
 
 @admin.register(Tag)
@@ -53,7 +54,7 @@ class RecipeAdmin(admin.ModelAdmin):
         'author__username',
     )
     list_filter = ('tags',)
-    inlines = (RecipeIngredientAdmin,)
+    inlines = (RecipeIngredientInLine,)
 
     def tags_list(self, obj):
         return ', '.join([tag.name for tag in obj.tags.all()])
