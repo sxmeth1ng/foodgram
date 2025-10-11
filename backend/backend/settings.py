@@ -129,5 +129,5 @@ DJOSER = {
     'SERIALIZERS': {
         'user': 'api.serializers.UserViewSerializer',
         'current_user': 'api.serializers.UserViewSerializer'
-            },
+    },
 }

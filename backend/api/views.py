@@ -92,9 +92,9 @@ class RecipeViewSet(ModelViewSet):
         recipe = get_object_or_404(Recipe, id=pk)
         user = request.user
         shopping_cart_serializer = ShoppingCartSerializer(data={
-                'user': user.id,
-                'recipe': recipe.id
-            })
+            'user': user.id,
+            'recipe': recipe.id
+        })
         shopping_cart_serializer.save()
         serializer = RecipeShortSerializer(recipe)
         return Response(serializer.data, status=status.HTTP_201_CREATED)

@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from recipes.models import (
     Ingredient, Recipe, RecipeIngredient, Tag, User, Favorite, ShoppingCart
-    )
+)
 from users.models import Subscription
 
 
@@ -29,9 +29,10 @@ class UserViewSerializer(serializers.ModelSerializer):
         """Проверка подписки на просматриваемый профиль."""
 
         request = self.context.get('request')
-        return bool(request and
-                    request.user.is_authenticated and
-                    obj.subscribers.filter(id=request.user.id).exists())
+        return bool(request
+                    and request.user.is_authenticated
+                    and obj.subscribers.filter(id=request.user.id).exists()
+                    )
 
 
 class AvatarSerializer(UserViewSerializer):

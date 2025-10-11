@@ -76,8 +76,8 @@ class Recipe(models.Model):
             MinValueValidator(MIN_VALUE),
             MaxValueValidator(
                 MAX_VALUE, message='Превышено максимально допустимое значение.'
-                )
-            ),
+            )
+        ),
     )
     pub_date = models.DateTimeField('Дата публикации', auto_now_add=True)
     tags = models.ManyToManyField(
@@ -121,7 +121,7 @@ class RecipeIngredient(models.Model):
             MaxValueValidator(
                 MAX_VALUE,
                 message='Превышено максимально допустимое колличество')
-            )
+        )
     )
 
     class Meta:
