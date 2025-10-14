@@ -295,7 +295,7 @@ class UserViewSet(djoser_views.UserViewSet):
                 context={'request': request}
             )
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        
+
         count_to_del, _ = Subscription.objects.filter(
             user=user, author_id=id
         ).delete()
