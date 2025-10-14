@@ -8,16 +8,12 @@ from recipes.models import (
 from users.models import Subscription
 
 
-class UserViewSerializer(serializers.ModelSerializer):
-    """Сериализатор для получения данных о пользователе."""
+class UserSerializer(serializers.ModelSerializer):
+    """Базовый сериализатор модели пользователя."""
 
-    is_subscribed = serializers.SerializerMethodField()
-
-    class Meta():
+    class Meta:
         model = User
         fields = (
-            'is_subscribed',
-            'avatar',
             'email',
             'id',
             'username',
@@ -25,14 +21,42 @@ class UserViewSerializer(serializers.ModelSerializer):
             'last_name',
         )
 
+
+class UserViewSerializer(UserSerializer):
+    """Сериализатор для получения данных о пользователе."""
+
+    is_subscribed = serializers.SerializerMethodField()
+
+    class Meta(UserSerializer.Meta):
+        fields = UserSerializer.Meta.fields + (
+            'is_subscribed',
+            'avatar',
+        )
+
     def get_is_subscribed(self, obj):
         """Проверка подписки на просматриваемый профиль."""
 
-        request = self.context.get('request')
-        return bool(request
-                    and request.user.is_authenticated
-                    and obj.subscribers.filter(id=request.user.id).exists()
-                    )
+        user_id = self.context.get('request').user.id
+        return Subscription.objects.filter(
+            author=obj.id, user=user_id
+        ).exists()
+
+
+class UserCreateSerializer(UserSerializer):
+    """Сериализатор для регистрации нового пользователя."""
+
+    class Meta(UserSerializer.Meta):
+        fields = UserSerializer.Meta.fields + ('password',)
+
+    def create(self, validated_data):
+        return User.objects.create_user(**validated_data)
+
+    def to_representation(self, instance):
+        """После регистрации в ответе не должен передаваться пароль."""
+
+        representation = super().to_representation(instance)
+        representation.pop('password', None)
+        return representation
 
 
 class AvatarSerializer(UserViewSerializer):
@@ -171,18 +195,17 @@ class RecipeViewSerializer(serializers.ModelSerializer):
         )
 
     def get_is_favorited(self, obj):
-        user = self.context['request'].user
-        return (
-            user.is_authenticated
-            and user.favorite_recipes.filter(id=obj.id).exists()
-        )
+        user_id = self.context.get('request').user.id
+        return Favorite.objects.filter(
+            user=user_id,
+            recipe=obj.id
+        ).exists()
 
     def get_is_in_shopping_cart(self, obj):
-        user = self.context['request'].user
-        return (
-            user.is_authenticated
-            and user.shopping_cart.filter(id=obj.id).exists()
-        )
+        user_id = self.context.get('request').user.id
+        return ShoppingCart.objects.filter(
+            user=user_id, recipe=obj.id
+        ).exists()
 
 
 class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
@@ -218,20 +241,29 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
         return image
 
     def validate(self, data):
-        if not data['ingredients'] or not data['tags']:
+        if 'ingredients' in data and not data['ingredients']:
             raise serializers.ValidationError(
-                'Заполнены не все поля.')
-
-        if len(data['tags']) != len(set(data['tags'])):
-            raise serializers.ValidationError('Не допускается указание '
-                                              'одинаковых тегов.')
-        ingredient_ids = [
-            ingredient['id'] for ingredient in data['ingredients']
-        ]
-        if len(ingredient_ids) != len(set(ingredient_ids)):
-            raise serializers.ValidationError(
-                'Не допускается повторение ингредиентов.'
+                'Должен быть указан хотя бы один ингредиент.'
             )
+
+        if 'tags' in data and not data['tags']:
+            raise serializers.ValidationError(
+                'Должен быть указан хотя бы один тег.'
+            )
+        if 'tags' in data and data['tags']:
+            if len(data['tags']) != len(set(data['tags'])):
+                raise serializers.ValidationError(
+                    'Не допускается указание одинаковых тегов.'
+                )
+        if 'ingredients' in data and data['ingredients']:
+            ingredient_ids = [
+                ingredient['id'] for ingredient in data['ingredients']
+            ]
+            if len(ingredient_ids) != len(set(ingredient_ids)):
+                raise serializers.ValidationError(
+                    'Не допускается повторение ингредиентов.'
+                )
+
         return data
 
     @staticmethod
@@ -256,6 +288,13 @@ class RecipeCreateUpdateSerializer(serializers.ModelSerializer):
         return recipe
 
     def update(self, instance, validated_data):
+        required_fields = ('tags', 'ingredients')
+        missing_fields = [field for field in required_fields if field not in
+                          validated_data]
+        if missing_fields:
+            raise serializers.ValidationError(
+                {field: 'Обязательное поле.' for field in missing_fields}
+            )
         tags = validated_data.pop('tags')
         ingredients = validated_data.pop('ingredients')
         instance = super().update(instance, validated_data)
