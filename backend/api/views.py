@@ -11,15 +11,15 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from djoser import views as djoser_views
-from djoser.serializers import SetPasswordSerializer
+
 
 from api.filters import IngredientFilter, RecipeFilter
 from api.paginators import BasePaginator
 from api.permissions import IsAuthorOrReadOnly
 from api.serializers import (
     AvatarSerializer, RecipeShortSerializer, TagSerializer,
-    IngredientSerializer, CreateSubscriptionSerializer, UserViewSerializer,
-    SubscriptionSerializer, UserCreateSerializer, RecipeCreateUpdateSerializer
+    IngredientSerializer, CreateSubscriptionSerializer,
+    SubscriptionSerializer, RecipeCreateUpdateSerializer
 )
 from api.utils import export_shopping_cart
 from recipes.models import (
@@ -205,13 +205,6 @@ class UserViewSet(djoser_views.UserViewSet):
         'username',
         'email',
     )
-    serializers = {
-        'default': UserViewSerializer,
-        'create': UserCreateSerializer,
-        'subscriptions': SubscriptionSerializer,
-        'subscribe': SubscriptionSerializer,
-        'set_password': SetPasswordSerializer
-    }
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve', 'create']:
@@ -227,24 +220,22 @@ class UserViewSet(djoser_views.UserViewSet):
         else:
             return super().get_permissions()
 
-    def get_serializer_class(self):
-        return self.serializers.get(self.action, self.serializers['default'])
-
     @action(
         methods=('GET',),
         detail=False,
         url_path='me',
     )
     def me(self, request):
-        return Response(self.get_serializer(request.user).data)
+        return super().me(request)
 
     @action(
         methods=('PUT',),
         detail=False,
-        url_path='me/avatar'
+        url_path='me/avatar',
+        serializer_class=AvatarSerializer
     )
     def avatar(self, request):
-        serializer = AvatarSerializer(request.user, data=request.data)
+        serializer = self.get_serializer(request.user, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -279,12 +270,6 @@ class UserViewSet(djoser_views.UserViewSet):
         user = request.user
         author = get_object_or_404(User, id=id)
         if request.method == 'POST':
-            if Subscription.objects.filter(user=user, author=author).exists():
-                return Response(
-                    {'detail': 'Нельзя подписаться повторно на одного'
-                               ' пользователя.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
             create_subscription_serializer = CreateSubscriptionSerializer(
                 data={'user': user.id, 'author': author.id}
             )

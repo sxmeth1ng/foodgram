@@ -127,14 +127,14 @@ DJOSER = {
     'PASSWORD_RESET_CONFIRM_URL': '#/password/reset/confirm/{uid}/{token}',
     'USERNAME_RESET_CONFIRM_URL': '#/username/reset/confirm/{uid}/{token}',
     'ACTIVATION_URL': '#/activate/{uid}/{token}',
-    'SEND_ACTIVATION_EMAIL': True,
+    'SEND_ACTIVATION_EMAIL': False,
     'LOGIN_FIELD': 'email',
     'HIDE_USERS': False,
     'PERMISSIONS': {
-        'user_list': ['rest_framework.permissions.AllowAny']
+        'user_list': ('rest_framework.permissions.AllowAny',)
     },
     'SERIALIZERS': {
         'user': 'api.serializers.UserViewSerializer',
-        'current_user': 'api.serializers.UserViewSerializer'
+        'current_user': 'api.serializers.UserViewSerializer',
     },
 }
