@@ -1,3 +1,6 @@
+import random
+import string
+
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
@@ -85,6 +88,13 @@ class Recipe(models.Model):
         verbose_name='Теги',
         related_name='recipes',
     )
+    short_code = models.CharField(
+        'Короткий код',
+        max_length=10,
+        unique=True,
+        blank=True,
+        null=True
+    )
 
     class Meta:
         verbose_name = 'Рецепт'
@@ -98,6 +108,22 @@ class Recipe(models.Model):
         return self.favorite_recipes.count()
 
     added_to_favorite.short_description = 'Добавлено в избранное'
+
+    def generate_short_code(self):
+        """Генерация уникального короткого кода."""
+        length = 8
+        characters = string.ascii_letters + string.digits
+
+        while True:
+            code = ''.join(random.choice(characters) for _ in range(length))
+            if not Recipe.objects.filter(short_code=code).exists():
+                return code
+
+    def save(self, *args, **kwargs):
+        """Переопределяем save для генерации короткого кода при создании."""
+        if not self.pk and not self.short_code:
+            self.short_code = self.generate_short_code()
+        super().save(*args, **kwargs)
 
 
 class RecipeIngredient(models.Model):

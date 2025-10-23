@@ -1,9 +1,7 @@
-from django.conf import settings
 from django.db.models import Sum, Count
 from django.http import FileResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from hashids import Hashids
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -11,15 +9,17 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from djoser import views as djoser_views
+from django.http import HttpResponseRedirect
 
 
 from api.filters import IngredientFilter, RecipeFilter
 from api.paginators import BasePaginator
 from api.permissions import IsAuthorOrReadOnly
 from api.serializers import (
-    AvatarSerializer, RecipeShortSerializer, TagSerializer,
+    AvatarSerializer, TagSerializer,
     IngredientSerializer, CreateSubscriptionSerializer,
-    SubscriptionSerializer, RecipeCreateUpdateSerializer
+    SubscriptionSerializer, RecipeCreateUpdateSerializer,
+    FavoriteSerializer, ShoppingCartSerializer
 )
 from api.utils import export_shopping_cart
 from recipes.models import (
@@ -28,17 +28,11 @@ from recipes.models import (
 from users.models import Subscription
 
 
-def redirect_view(request, short_code):
-    """Перенаправление на рецепт по короткой ссылке."""
-
-    hashids = Hashids(salt=settings.HASHIDS_SALT, min_length=8)
-    decoded_id = hashids.decode(short_code)
-
-    if decoded_id:
-        obj_id = decoded_id[0]
-        recipe = get_object_or_404(Recipe, id=obj_id)
-        return redirect(f'recipes/{recipe.id}')
-    return redirect('/404/')
+def redirect_short_link(request, short_code):
+    """Перенаправление по короткой ссылке на страницу рецепта."""
+    recipe = get_object_or_404(Recipe, short_code=short_code)
+    recipe_url = request.build_absolute_uri(f'/api/recipes/{recipe.id}/')
+    return HttpResponseRedirect(recipe_url)
 
 
 class RecipeViewSet(ModelViewSet):
@@ -72,15 +66,13 @@ class RecipeViewSet(ModelViewSet):
         user = request.user
         recipe = get_object_or_404(Recipe, id=pk)
 
-        favorite, created = Favorite.objects.get_or_create(
-            user=user,
-            recipe=recipe
+        serializer = FavoriteSerializer(
+            data={'user': user.id, 'recipe': recipe.id},
+            context=self.get_serializer_context()
         )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
 
-        if not created:
-            raise ValidationError({'detail': 'Рецепт уже есть в избранных.'})
-
-        serializer = RecipeShortSerializer(recipe)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @favorite.mapping.delete
@@ -93,7 +85,7 @@ class RecipeViewSet(ModelViewSet):
             recipe_id=pk
         ).delete()
 
-        if deleted_count == 0:
+        if not deleted_count:
             raise ValidationError({
                 'detail': f'Рецепт с id {pk} не найден в избранных.'
             })
@@ -105,17 +97,13 @@ class RecipeViewSet(ModelViewSet):
         user = request.user
         recipe = get_object_or_404(Recipe, id=pk)
 
-        cart_item, created = ShoppingCart.objects.get_or_create(
-            user=user,
-            recipe=recipe
+        serializer = ShoppingCartSerializer(
+            data={'user': user.id, 'recipe': recipe.id},
+            context=self.get_serializer_context()
         )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
 
-        if not created:
-            raise ValidationError(
-                {'detail': 'Рецепт уже есть в списке покупок.'}
-            )
-
-        serializer = RecipeShortSerializer(recipe)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @shopping_cart.mapping.delete
@@ -128,7 +116,7 @@ class RecipeViewSet(ModelViewSet):
             recipe_id=pk
         ).delete()
 
-        if deleted_count == 0:
+        if not deleted_count:
             raise ValidationError({
                 'detail': f'Рецепт с id {pk} не найден в списке покупок.'
             })
@@ -138,10 +126,8 @@ class RecipeViewSet(ModelViewSet):
     @action(methods=('GET',), detail=True, url_path='get-link')
     def get_link(self, request, pk=None):
         obj = get_object_or_404(Recipe, id=pk)
-        salt = getattr(settings, 'HASHIDS_SALT')
-        hashids = Hashids(salt=salt, min_length=8)
-        short_code = hashids.encode(obj.id)
-        short_url = request.build_absolute_uri(f'/s/{short_code}')
+
+        short_url = request.build_absolute_uri(f'/s/{obj.short_code}/')
 
         return Response({'short-link': short_url}, status=status.HTTP_200_OK)
 
@@ -261,30 +247,27 @@ class UserViewSet(djoser_views.UserViewSet):
         )
         return self.get_paginated_response(serializer.data)
 
-    @action(
-        methods=('POST', 'DELETE'),
-        detail=True,
-        url_path='subscribe',
-    )
+    @action(methods=('POST',), detail=True, url_path='subscribe')
     def subscribe(self, request, id=None):
         user = request.user
         author = get_object_or_404(User, id=id)
-        if request.method == 'POST':
-            create_subscription_serializer = CreateSubscriptionSerializer(
-                data={'user': user.id, 'author': author.id}
-            )
-            create_subscription_serializer.is_valid(raise_exception=True)
-            create_subscription_serializer.save()
-            serializer = SubscriptionSerializer(
-                author,
-                context={'request': request}
-            )
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        count_to_del, _ = Subscription.objects.filter(
-            user=user, author_id=id
+        serializer = CreateSubscriptionSerializer(
+            data={'user': user.id, 'author': author.id},
+            context=self.get_serializer_context()
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @subscribe.mapping.delete
+    def delete_subscribe(self, request, id=None):
+        user = request.user
+        author = get_object_or_404(User, id=id)
+        deleted_count, _ = Subscription.objects.filter(
+            user=user, author_id=author.id
         ).delete()
-        if count_to_del == 0:
+        if not deleted_count:
             return Response(
                 {'detail': 'Вы не были подписаны на этого пользователя.'},
                 status=status.HTTP_400_BAD_REQUEST

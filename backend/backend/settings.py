@@ -12,7 +12,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'SECRET_KEY')
 
 HASHIDS_SALT = os.getenv('HASHIDS_SALT', 'some_salt')
 
-AUTH_USER_MODEL = 'users.CustomUser'
+AUTH_USER_MODEL = 'users.User'
 
 DEBUG = bool(strtobool(os.getenv('DEBUG_MODE', 'True')))
 
