@@ -79,11 +79,11 @@ class SubscriptionSerializer(UserViewSerializer):
             'recipes_limit'
         )
         recipes = obj.recipes.all()
-        try:
-            if recipes_limit:
+        if recipes_limit:
+            try:
                 recipes = recipes[:int(recipes_limit)]
-        except (TypeError, ValueError):
-            pass
+            except (TypeError, ValueError):
+                pass
         return RecipeShortSerializer(recipes, many=True).data
 
     def get_recipes_count(self, obj):
@@ -336,6 +336,10 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
 class CreateSubscriptionSerializer(serializers.ModelSerializer):
     """Сериализатор для создания подписки."""
 
+    class Meta:
+        model = Subscription
+        fields = ('user', 'author')
+
     def validate(self, attrs):
         user_id = attrs.get('user')
         author_id = attrs.get('author')
@@ -358,7 +362,3 @@ class CreateSubscriptionSerializer(serializers.ModelSerializer):
             instance.author,
             context=self.context
         ).data
-
-    class Meta:
-        model = Subscription
-        fields = ('user', 'author')

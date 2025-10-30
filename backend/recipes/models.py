@@ -104,6 +104,12 @@ class Recipe(models.Model):
     def __str__(self):
         return self.name[:50]
 
+    def save(self, *args, **kwargs):
+        """Переопределяем save для генерации короткого кода при создании."""
+        if not self.pk and not self.short_code:
+            self.short_code = self.generate_short_code()
+        super().save(*args, **kwargs)
+
     def added_to_favorite(self):
         return self.favorite_recipes.count()
 
@@ -118,12 +124,6 @@ class Recipe(models.Model):
             code = ''.join(random.choice(characters) for _ in range(length))
             if not Recipe.objects.filter(short_code=code).exists():
                 return code
-
-    def save(self, *args, **kwargs):
-        """Переопределяем save для генерации короткого кода при создании."""
-        if not self.pk and not self.short_code:
-            self.short_code = self.generate_short_code()
-        super().save(*args, **kwargs)
 
 
 class RecipeIngredient(models.Model):
