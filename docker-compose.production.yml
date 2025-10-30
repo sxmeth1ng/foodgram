@@ -24,9 +24,9 @@ services:
   frontend:
     env_file: .env
     image: sxmething/foodgram_frontend
-    command: cp -r /app/build/. /static/
+    command: cp -r /app/build/. /app/static/
     volumes:
-      - static:/static
+      - static:/app/static/
   gateway:
     depends_on:
       - backend
@@ -35,5 +35,5 @@ services:
     ports:
       - 8090:80
     volumes:
-      - static:/static
+      - static:/app/static/
       - media:/app/media/
