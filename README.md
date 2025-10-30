@@ -5,7 +5,7 @@
 ## Адрес сайта
 IP-адрес сервера: 84.252.137.104
 
-[https://foodforjpg.publicvm.com/](https://foodforjpg.publicvm.com/)
+[https://foogram4ik.ddns.net/](https://foogram4ik.ddns.net/)
 
 ## Админка сайта
 
