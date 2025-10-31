@@ -110,11 +110,6 @@ class Recipe(models.Model):
             self.short_code = self.generate_short_code()
         super().save(*args, **kwargs)
 
-    def added_to_favorite(self):
-        return self.favorite_recipes.count()
-
-    added_to_favorite.short_description = 'Добавлено в избранное'
-
     def generate_short_code(self):
         """Генерация уникального короткого кода."""
         length = 8

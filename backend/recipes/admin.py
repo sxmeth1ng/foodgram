@@ -47,7 +47,6 @@ class RecipeAdmin(admin.ModelAdmin):
         'tags_list',
         'ingredients_list',
         'pub_date',
-        'added_to_favorite'
     )
     search_fields = (
         'name',
