@@ -9,7 +9,6 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from djoser import views as djoser_views
-from django.http import HttpResponseRedirect
 
 
 from api.filters import IngredientFilter, RecipeFilter
