@@ -1,6 +1,6 @@
 from django.db.models import Sum, Count
 from django.http import FileResponse
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status
 from rest_framework.decorators import action
@@ -29,10 +29,9 @@ from users.models import Subscription
 
 
 def redirect_short_link(request, short_code):
-    """Перенаправление по короткой ссылке на страницу рецепта."""
+    """Перенаправление по короткой ссылке на страницу рецепта"""
     recipe = get_object_or_404(Recipe, short_code=short_code)
-    recipe_url = request.build_absolute_uri(f'/api/recipes/{recipe.id}/')
-    return HttpResponseRedirect(recipe_url)
+    return redirect(f'/recipes/{recipe.id}/')
 
 
 class RecipeViewSet(ModelViewSet):

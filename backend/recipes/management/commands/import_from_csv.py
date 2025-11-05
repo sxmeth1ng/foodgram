@@ -1,12 +1,13 @@
 import csv
 import os
 
-from django.conf import settings
+
 from django.core.management.base import BaseCommand
 
 from recipes.models import Ingredient
+from backend.settings import BASE_DIR
 
-FILE_PATH = os.path.join(settings.BASE_DIR.parent, 'data')
+FILE_PATH = BASE_DIR / '/app/data/'
 FILENAME = 'ingredients.csv'
 
 
